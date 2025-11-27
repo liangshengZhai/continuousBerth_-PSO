@@ -11,7 +11,7 @@
 
 
 
-const double V_MAX_POS = 20.0;  // 位置速度上限（米/迭代）
+const double V_MAX_POS = 40.0;  // 位置速度上限（米/迭代）
 const double V_MAX_TIME = 2.0;  // 时间速度上限（小时/迭代）
 const double V_MAX_SLOT = 3.0;  // 槽位速度上限（槽位/迭代）
 const double LAMBDA_PEN = 1000000000.0; // 约束惩罚系数
@@ -219,17 +219,13 @@ void Particle::evaluate_fitness(){
     }
 
     // 计算最终适应度（加权目标+惩罚）
-    double fitness_obj = params.alpha * trans_cost + params.gamma * save_cost + params.beta * total_time + 200000 * berth_cost;
+    double fitness_obj = params.alpha * trans_cost + params.gamma * save_cost + params.beta * total_time + 2000 * berth_cost;
     double total_penalty = LAMBDA_PEN * (space_pen + time_pen + slot_pen);
     fitness = fitness_obj + total_penalty;
     // std::cout << fitness << std::endl;
 }
 
-void Particle::update_velocity(const std::vector<double>& global_best_position) {
-    double w = 0.5;    // 惯性权重
-    double c1 = 1.5;   // 个体学习因子
-    double c2 = 1.5;   // 社会学习因子
-
+void Particle::update_velocity(const std::vector<double>& global_best_position, double w, double c1, double c) {
     for (size_t i = 0; i < velocity.size(); ++i) {
         double r1 = rand() / (double)RAND_MAX;
         double r2 = rand() / (double)RAND_MAX;
