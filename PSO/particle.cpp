@@ -16,15 +16,6 @@ const double V_MAX_TIME = 2.0;  // 时间速度上限（小时/迭代）
 const double V_MAX_SLOT = 3.0;  // 槽位速度上限（槽位/迭代）
 const double LAMBDA_PEN = 1000000000.0; // 约束惩罚系数
 
-double rastrigin(const std::vector<double>& x) {
-    double A = 10.0;
-    double sum = A * x.size();
-    for (double xi : x) {
-    // ===================== 目标函数定义区结束 =====================
-        sum += xi * xi - A * std::cos(2 * M_PI * xi);
-    }
-    return sum;
-}
 
 Particle::Particle( ModelParams params){
     //构造函数对参数进行接收

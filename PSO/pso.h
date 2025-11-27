@@ -4,8 +4,8 @@
 #include "particle.h"
 
 // 算法参数
-const int POP_SIZE = 4000;        // 种群规模（粒子数量）
-const int MAX_ITER = 2000;       // 最大迭代次数
+const int POP_SIZE = 3000;        // 种群规模（粒子数量）
+const int MAX_ITER = 500;       // 最大迭代次数
 
 class PSO {
 private:
@@ -13,7 +13,8 @@ private:
     vector<double> g_best;        // 全局最优编码
     double g_best_fitness;        // 全局最优适应度
     ModelParams params;        // 模型参数
-    int g_best_index ;
+    int g_best_index;
+    Particle* g_best_particle;    // 保存最优粒子指针
 
 public:
     PSO(ModelParams params) : params(params) {
@@ -26,11 +27,14 @@ public:
         g_best_index = 0;
         g_best = swarm[0].code;
         g_best_fitness = swarm[0].fitness;
+        g_best_particle = &swarm[0];
         std::cout << "Initial global best fitness: " << g_best_fitness << std::endl;
-        for (auto& particle : swarm) {
-            if (particle.fitness < g_best_fitness) {
-                g_best = particle.code;
-                g_best_fitness = particle.fitness;
+        for (int i = 0; i < swarm.size(); ++i) {
+            if (swarm[i].fitness < g_best_fitness) {
+                g_best = swarm[i].code;
+                g_best_fitness = swarm[i].fitness;
+                g_best_index = i;
+                g_best_particle = &swarm[i];
             }
         }
     }
@@ -109,10 +113,12 @@ public:
             }
 
             // 更新全局最优
-            for (auto& particle : swarm) {
-                if (particle.fitness < g_best_fitness) {
-                    g_best = particle.code;
-                    g_best_fitness = particle.fitness;
+            for (int i = 0; i < swarm.size(); ++i) {
+                if (swarm[i].fitness < g_best_fitness) {
+                    g_best = swarm[i].code;
+                    g_best_fitness = swarm[i].fitness;
+                    g_best_index = i;
+                    g_best_particle = &swarm[i];
                 }
             }
 
@@ -123,13 +129,8 @@ public:
         }
 
         cout << "=== PSO算法迭代结束 ===" << endl;
-        // 找到全局最优对应的粒子并打印结果
-        for (auto& particle : swarm) {
-            if (particle.fitness == g_best_fitness) {
-                particle.printParticle();
-                break;
-            }
-        }
+        // 直接输出保存的最优粒子
+        if (g_best_particle) g_best_particle->printParticle();
     }
      // 辅助函数：数值夹紧
     double clamp(double val, double min_val, double max_val) {
