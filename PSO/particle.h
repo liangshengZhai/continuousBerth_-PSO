@@ -29,6 +29,7 @@ public:
     void update_velocity(const std::vector<double>& global_best_position, double w, double c1, double c2);
     void update_position();
     void printParticle() const;
+    void writeToCSV() const;
 
 };
 

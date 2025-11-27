@@ -7,15 +7,50 @@
 #include <limits>
 #include <ctime>
 #include <fstream>
+#include <filesystem>
+#include <iostream>
+#include <vector>
+#include <map>
+#include <string>
+#include <fstream>
+#include <cmath>
+#include <random>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <cerrno>
+#include <cstring>
 #include "../model/modelParam.h"
 
 
-
+static const std::string OUTPUT_DIR = "output/output_2";  
 const double V_MAX_POS = 40.0;  // 位置速度上限（米/迭代）
 const double V_MAX_TIME = 2.0;  // 时间速度上限（小时/迭代）
 const double V_MAX_SLOT = 3.0;  // 槽位速度上限（槽位/迭代）
 const double LAMBDA_PEN = 1000000000.0; // 约束惩罚系数
 
+static bool mkdir_p(const std::string& dirPath) {
+    if (dirPath.empty()) return true;
+    std::string path;
+    for (size_t i = 0; i < dirPath.size(); ++i) {
+        char c = dirPath[i];
+        path.push_back(c);
+        if (c == '/' || i == dirPath.size() - 1) {
+            if (!path.empty() && path != "/" && path != "./") {
+                struct stat st;
+                if (stat(path.c_str(), &st) != 0) {
+                    if (mkdir(path.c_str(), 0755) != 0 && errno != EEXIST) {
+                        std::cerr << "创建目录失败: " << path << ", 错误: " << std::strerror(errno) << std::endl;
+                        return false;
+                    }
+                } else if (!S_ISDIR(st.st_mode)) {
+                    std::cerr << "路径存在但不是目录: " << path << std::endl;
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
 
 Particle::Particle( ModelParams params){
     //构造函数对参数进行接收
@@ -300,14 +335,13 @@ void Particle::printParticle() const {
             double unload_speed = params.unloadingSpeed[i][k];
             double duration = params.cargoWeight[i]/(unload_speed*params.numShipK); //假设各舱同时作业，作业时间为最长舱的作业时间
             single_finish += duration;
-            cout << "船" << i << ": 船首位置=" << fixed << setprecision(1) << berth_start << "米（船尾=" << berth_start+ship_len << "米）"
+            cout << "船" << i <<"舱"<< k<< ": 船首位置=" << fixed << setprecision(1) << berth_start << "米（船尾=" << berth_start+ship_len << "米）"
             << "，开始时间=" << start_time << "h（到达时间=" << arrive << "h）"
             << "，完成时间=" << fixed << setprecision(2) << single_finish << "h" << endl;
             start_time = single_finish;
         }
         
     }
-
     cout << "\n2. 槽位分配方案：" << endl;
     for (int i = 0; i < params.numShips; ++i) {
         for (int k = 0; k < params.numShipK; ++k) {
@@ -407,4 +441,108 @@ void Particle::printParticle() const {
     double fitness_obj = params.alpha * trans_cost + params.gamma * save_cost + params.beta * total_time + 2000 * berth_cost;
     cout << "未加惩罚项的目标值：" << fixed << setprecision(2) << fitness_obj << endl;
     cout << "--------------------------" << endl;
+}
+
+void Particle::writeToCSV()const{
+    // 写入结果到 output 目录（CSV 格式，可由 Excel 打开）
+		try {
+			// 确保输出目录存在
+			if (!mkdir_p(OUTPUT_DIR)) {
+				throw std::runtime_error("无法创建输出目录: " + OUTPUT_DIR);
+			}
+
+			// 泊位分配
+			// 输出每艘船的停靠起始位置（a_s）和终止位置（a_s + shipLength）
+			{
+				std::ofstream ofs(OUTPUT_DIR + "/berth_assignment.csv");
+				ofs << "ship,berth_start,berth_end\n";
+				for (int i = 0; i < params.numShips; i++) {
+					try {
+						double berth_start = code[i];
+						double berth_end = berth_start + params.shipLength[i];
+						ofs << i << "," << berth_start << "," << berth_end << "\n";
+					} catch (std::exception &ex) {
+						ofs << i << ",[未提取],[未提取]" << ex.what() << "\n";
+					}
+				}
+			}
+
+			// 每个槽的分配 (s,k,row,slot)
+			{
+				std::ofstream ofs(OUTPUT_DIR + "/slot_allocations.csv");
+				ofs << "ship,k,row,slot\n";
+				for (int s = 0; s < params.numShips; ++s) {
+					for (int k = 0; k < params.numShipK; ++k) {
+						int base_idx = 2 * params.numShips + s * params.numShipK * 2 + k * 2;
+                        int row = (int)code[base_idx];
+                        int start_slot = (int)code[base_idx + 1];
+                        int need_slots = params.requiredSlots[s][k];
+                        int end_slot = start_slot + need_slots - 1;
+                        ofs << s << "," << k << "," << row << "," << start_slot << "-" << end_slot << "\n";
+						
+					}
+				}
+			}
+
+			// // 每个货舱占用区间
+			// {
+			// 	std::ofstream ofs(OUTPUT_DIR + "/intervals.csv");
+			// 	ofs << "ship,k,row,intervals\n";
+			// 	for (int s = 0; s < params.numShips; ++s) {
+			// 		for (int k = 0; k < params.numShipK; ++k) {
+			// 			int base_idx = 2 * params.numShips + s * params.numShipK * 2 + k * 2;
+            //             int row = (int)code[base_idx];
+            //             int start_slot = (int)code[base_idx + 1];
+            //             int need_slots = params.requiredSlots[s][k];
+            //             int end_slot = start_slot + need_slots - 1;
+			// 			// 合并连续区间为字符串
+			// 			std::ostringstream oss;
+			// 			int start = occ[0], prev = occ[0];
+			// 			for (size_t idx = 1; idx < occ.size(); ++idx) {
+			// 				int cur = occ[idx];
+			// 				if (cur == prev + 1) { prev = cur; }
+			// 				else {
+			// 					if (start == prev) oss << start;
+			// 					else oss << start << "-" << prev;
+			// 					oss << ";";
+			// 					start = cur; prev = cur;
+			// 				}
+			// 			}
+			// 			if (start == prev) oss << start; else oss << start << "-" << prev;
+
+			// 			ofs << s << "," << k << "," << assignedRow << "," << '"' << oss.str() << '"' << "\n";
+			// 		}
+			// 	}
+			// }
+
+			// e_s
+			{
+				std::ofstream ofs(OUTPUT_DIR + "/e_s.csv");
+				ofs << "ship,e_s\n";
+				for (int s = 0; s < params.numShips; ++s) ofs << s << "," <<  code[params.numShips + s] << "\n";
+			}
+
+			// e_sk
+			{
+				std::ofstream ofs(OUTPUT_DIR + "/e_sk.csv");
+				ofs << "ship,k,e_sk\n";
+				for (int s = 0; s < params.numShips; ++s) {
+                    double ship_len = params.shipLength[s];
+                    double arrive = params.arrivalTime[s];
+                    double berth_start = code[s];
+                    double start_time = code[params.numShips + s];
+                    double single_finish = start_time;
+					for (int k = 0; k < params.numShipK; ++k) {
+                        double unload_speed = params.unloadingSpeed[s][k];
+                        double duration = params.cargoWeight[s]/(unload_speed*params.numShipK); //假设各舱同时作业，作业时间为最长舱的作业时间
+                        single_finish += duration;
+                        ofs << s << "," << k << "," << start_time << "\n";
+                        start_time = single_finish;
+					}
+				}
+			}
+
+        } catch (std::exception &ex) {
+            std::cout << "写输出文件时出错: " << ex.what() << std::endl;
+        }
 }

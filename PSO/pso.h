@@ -4,8 +4,8 @@
 #include "particle.h"
 
 // 算法参数
-const int POP_SIZE = 3000;        // 种群规模（粒子数量）
-const int MAX_ITER = 500;       // 最大迭代次数
+const int POP_SIZE = 8000;        // 种群规模（粒子数量）
+const int MAX_ITER = 200;       // 最大迭代次数
 
 class PSO {
 private:
@@ -130,7 +130,10 @@ public:
 
         cout << "=== PSO算法迭代结束 ===" << endl;
         // 直接输出保存的最优粒子
-        if (g_best_particle) g_best_particle->printParticle();
+        if (g_best_particle) {
+            g_best_particle->printParticle();
+            g_best_particle->writeToCSV();
+        }
     }
      // 辅助函数：数值夹紧
     double clamp(double val, double min_val, double max_val) {

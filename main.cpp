@@ -8,8 +8,8 @@
 #include <sstream>
 #include "PSO/pso.h"
 // 集中管理数据输入和输出路径，只需改这里即可
-static const std::string INPUT_BASE = "data/example_1/params_output"; // 不带扩展名的前缀
-static const std::string OUTPUT_DIR = "output/output_1";               // 输出目录
+static const std::string INPUT_BASE = "data/example_2/params_output"; // 不带扩展名的前缀
+// static const std::string OUTPUT_DIR = "output/output_12";               // 输出目录
 
 //读取数据
 auto loadParamsFromCSV = [](const std::string &baseName) -> ModelParams {
@@ -199,18 +199,21 @@ auto loadParamsFromCSV = [](const std::string &baseName) -> ModelParams {
 int main() {
 	srand((unsigned)time(NULL));
 	// srand((unsigned)time(NULL));
-		ModelParams params;
-		try{
-			params = loadParamsFromCSV(INPUT_BASE);    
-		}catch(const std::exception &e){
-			std::cerr << "Error loading parameters: " << e.what() << std::endl;
-			return -1;
-		}
-		PSO pso(params);
-		clock_t start = clock();
-		pso.run();
-		clock_t end = clock();
-		double elapsed = double(end - start) / CLOCKS_PER_SEC;
-		std::cout << "PSO求解用时: " << elapsed << " 秒" << std::endl;
-		return 0;
+	ModelParams params;
+	try{
+		params = loadParamsFromCSV(INPUT_BASE);    
+	}catch(const std::exception &e){
+		std::cerr << "Error loading parameters: " << e.what() << std::endl;
+		return -1;
 	}
+	PSO pso(params);
+	clock_t start = clock();
+	pso.run();
+	clock_t end = clock();
+	double elapsed = double(end - start) / CLOCKS_PER_SEC;
+	std::cout << "PSO求解用时: " << elapsed << " 秒" << std::endl;
+	return 0;
+}
+
+
+
